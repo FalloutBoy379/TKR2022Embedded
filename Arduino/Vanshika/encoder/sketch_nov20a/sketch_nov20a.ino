@@ -1,4 +1,4 @@
-#define inputCLK 4
+#define inputCLK 4  // initializing
 #define inputDT 5
 int counter=0; // this is the value encoder will be changing.
 int currentstateclk; //to know wether the encoder has moved or not we need current state and previous state
