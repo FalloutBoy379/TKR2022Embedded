@@ -451,6 +451,11 @@ void setup()
   pinMode(pistonCenter, OUTPUT);
   pinMode(pistonRight, OUTPUT);
   pinMode(pistonLeft, OUTPUT);
+  pinMode(motorLeftA, OUTPUT);
+  pinMode(motorLeftB, OUTPUT);
+  pinMode(motorRightA, OUTPUT);
+  pinMode(motorRightB, OUTPUT);
+  
 
   pinMode(upPin, OUTPUT);
   pinMode(dpPin, OUTPUT);
