@@ -44,8 +44,8 @@ git add --all
 git commit -m 'YOUR COMMIT MESSAGE'
 git push origin main
 ```
-⚠️⚠️Note that this is not true for all commmits and pushes. Do not push to main if you are unsure about stuff, it could spoil things for all your friends and seniors. ⚠️⚠️
-
+⚠️⚠️Note that this is not true for all commmits and pushes. Do not push to main if you are unsure about stuff, it could spoil things for all fellow teammates. ⚠️⚠️
+Also note that if the "-m" argument is not mentioned, your default test editor will open and prompt you to write a detailed commit message, which may be required in some cases.
 
 For a detailed tutorial on how to use Git and it's importance: Check out this [Video](https://youtu.be/DVRQoVRzMIY "Importance of using GIT")
  
