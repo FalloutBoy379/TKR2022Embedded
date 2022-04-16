@@ -1,0 +1,66 @@
+ int x;
+int period = 200 ;
+unsigned long time_now = 0;
+const int dirPin=2;
+const int stepPin=8;
+const int Step_Per_Revl= 200;
+int buttonPin1=12;
+int buttonPin2=9;
+
+void setup() {
+  pinMode(buttonPin1, INPUT);
+  pinMode(buttonPin2, INPUT);
+ 
+  pinMode(dirPin,OUTPUT);
+  pinMode(stepPin,OUTPUT);}
+
+void loop() 
+{
+ 
+  if(digitalRead(buttonPin1) == HIGH &&digitalRead(buttonPin2) == LOW ) 
+  {
+  digitalWrite(dirPin,HIGH);
+  for(int x=0;x<100;x++)
+  {
+    
+    digitalWrite(stepPin,HIGH); 
+    time_now = micros();
+    while(micros() < time_now + period)
+    {
+      //delay 200ms;
+    }
+digitalWrite(stepPin,LOW); 
+time_now = micros();
+    while(micros() < time_now + period)
+    {
+      //delay 200ms;
+    }
+       
+    }
+  }
+
+
+  if(digitalRead(buttonPin1) == LOW &&digitalRead(buttonPin2) == HIGH ) 
+  {
+  digitalWrite(dirPin,LOW);
+  for(int x=0;x<100;x++)
+  {
+    digitalWrite(stepPin,HIGH); 
+    time_now = micros();
+    while(micros() < time_now + period)
+    {
+      //delay 200ms;
+    }
+   digitalWrite(stepPin,LOW); 
+   time_now = micros();
+    while(micros() < time_now + period)
+    {
+      //delay 200ms;
+    }
+       
+    }
+  }
+    
+
+  
+}
