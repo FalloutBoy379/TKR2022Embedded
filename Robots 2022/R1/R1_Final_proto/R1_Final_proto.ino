@@ -1,7 +1,7 @@
 #include <RoboClaw.h>
 #include <FastLED.h>
 
-FASTLED_USING_NAMESPACE
+FASTLED_USING_NAMESPACE           //for LED strip
 #define DATA_PIN    8
 #define LED_TYPE    WS2812B
 #define COLOR_ORDER GRB
@@ -11,20 +11,23 @@ CRGB leds[NUM_LEDS];
 #define BRIGHTNESS          96
 #define FRAMES_PER_SECOND  120
 
+int target_encoder = 0;           // Drive PID
+int curval = 0;
+
 int potPin = A0;
 
 RoboClaw roboclaw(&Serial1, 10000);
 #define address1 128
 #define address2 129
 
-#define EN1A 2
+#define EN1A 2                     //1A 1B is for Drive PID
 #define EN1B 10
-#define EN2A 3
+#define EN2A 3                     //2A 2B is for PowerWindow PID
 #define EN2B 11
 volatile int count1 = 0;
 volatile int count2 = 0;
 
-#define KP 0.9
+#define KP 0.7
 #define KI 0.0
 #define KD 1
 int prev_error = 0;
@@ -34,16 +37,17 @@ int PID(int currentValue, int targetValue);
 int duty = 0;
 int i;
 
-int upPin = 5;
+int upPin = 5;                                 //Throwing Mechanism
 int dpPin = 6;
 int dForward = 43;
-int dBackward = 44;
+int dBackward = 42;
 int uForward = 41;
 int uBackward = 40;
 
-#define pistonCenter 30
-#define pistonLeft 31
-#define pistonRight 32
+#define pistonCenterOut 50                        //Hopper Mechanism
+#define pistonCenterIn 51   
+#define pistonLeft 52
+#define pistonRight 53
 #define motorLeftA 13
 #define motorLeftB 9
 #define motorRightA 22
@@ -51,14 +55,14 @@ int uBackward = 40;
 #define pwm 12
 
 
-uint8_t button_count = 0;
+uint8_t button_count = 0;                       //Hopper Button Count
 uint8_t counter = 0;
 
 
+//Standard PS Code
+
 //Call ps_setup() in void setup()
 //Call ps_read() in void loop()
-
-
 
 #define BAUD 9600
 #define BAUDRATE  ((F_CPU/(BAUD*16UL)-1))
@@ -172,7 +176,7 @@ bool ps_read() {
   }
   if (butt[PS_UP] == 1)
   {
-    duty = 20000;
+    duty = 23000;                                  //Throwing Mechanism PowerWindow Angle- Forward
     //    duty += 1000;
     //    if(duty <= -30000)
     //    {
@@ -186,7 +190,7 @@ bool ps_read() {
   }
   if (butt[PS_DOWN] == 1)
   {
-    duty = -20000;
+    duty = -20000;                                 //Throwing Mechanism PowerWindow Angle- Backward
     //    duty -= 1000;
     //    if(duty < -30000)
     //    {
@@ -200,7 +204,7 @@ bool ps_read() {
   }
   if (butt[PS_LEFT] == 1)
   {
-    duty = 0;
+    duty = 0;                                       //PowerWindow Duty 0
     butt[PS_LEFT] = 0;
   }
   if (butt[PS_RIGHT] == 1)
@@ -210,21 +214,21 @@ bool ps_read() {
   }
   if (butt[PS_SQUARE] == 1)
   {
-    button_count++ ;
+    button_count++ ;                                //Hopper Mechanism Button
     Serial.println("square");
     butt[PS_SQUARE] = 0;
   }
   if (butt[PS_CIRCLE] == 1)
   {
-    setLED(0, 255, 0);
-    count1 = 0;
+    setLED(0, 255, 0);                              //Button for Drive Encoder value to be set as 0
+    count1 = 0;                                     //Also Hopper button count to be set as 0
     button_count = 0;
     counter = 0;
     butt[PS_CIRCLE] = 0;
   }
   if (butt[PS_TRIANGLE] == 1)
   {
-    setLED(0, 255, 0);
+    setLED(0, 255, 0);                               //Throwing Mechanism motors OFF
     digitalWrite(uForward, HIGH);
     digitalWrite(uBackward, LOW);
     i = 255;
@@ -248,7 +252,7 @@ bool ps_read() {
 
   if (butt[PS_CROSS] == 1)
   {
-    setLED(255, 0, 0);
+    setLED(255, 0, 0);                               //Throwing Mechanism motors ON
     digitalWrite(uForward, HIGH);
     digitalWrite(uBackward, LOW);
     i = 0;
@@ -272,13 +276,13 @@ bool ps_read() {
 
   if (butt[PS_L1] == 1)
   {
-
+    target_encoder++;                                  //Bot rotation by increasing target value
     Serial.println("L1");
     butt[PS_L1] = 0;
   }
   if (butt[PS_R1] == 1)
   {
-
+    target_encoder--;                                  //Bot rotation by decreasing target value
     Serial.println("R1");
     butt[PS_R1] = 0;
   }
@@ -302,7 +306,7 @@ bool ps_read() {
   }
 }
 
-void drive(double A_x, double A_y, double ang_s)
+void drive(double A_x, double A_y, double ang_s)         //Drive Equation
 {
   int F1, F2, F3;
   /*
@@ -331,12 +335,12 @@ void drive(double A_x, double A_y, double ang_s)
 
 }
 
-void powerwindowDuty()
+void powerwindowDuty()                                    //PowerWindow Throwing angle function
 {
   roboclaw.DutyM1(address1, duty);
 }
 
-int PID(int currentValue, int targetValue)
+int PID(int currentValue, int targetValue)                //PID code
 {
   int error = targetValue - currentValue;
 
@@ -348,55 +352,93 @@ int PID(int currentValue, int targetValue)
   return ((KP * prop_error) + (KI * integral_error) + (KD * diff_error));
 }
 
-void delay_ms(long int ms) {
+void delay_ms(long int ms) {                             //Delay byr millis
   long int currentMillis = millis();
   while (millis() - currentMillis < ms) {
     ps_read();
   }
 }
 
-void firstActuation() {
-  Serial.println("First");
-  digitalWrite(pistonCenter, HIGH);
+void firstActuation() {                                  //Hopper Actuation
+  Serial.println("First");                               //First Middle Piston is actuated
+  digitalWrite(pistonCenterOut, HIGH);                   //Then left Motor for pushing the ball is turned ON
+  digitalWrite(pistonCenterIn, LOW);
+  curval = PID((count1), target_encoder);                //Then left piston is actuated
+  drive(0, 0, curval);                                   //Left motor is turned OFF
+  ps_read();
   delay_ms(500);
-  digitalWrite(pistonCenter, LOW);
-  delay_ms(100);
+  ps_read();
+  digitalWrite(pistonCenterOut, LOW);
+  digitalWrite(pistonCenterIn, HIGH);
+  curval = PID((count1), target_encoder);
+  drive(0, 0, curval);
+  ps_read();
+  delay_ms(2000);
+  ps_read();
   digitalWrite(pistonLeft, HIGH);
+  curval = PID((count1), target_encoder);
+  drive(0, 0, curval);
   motorLeft(1, 255);
+  ps_read();
   delay_ms(3000);
+  ps_read();
+  curval = PID((count1), target_encoder);
+  drive(0, 0, curval);
   digitalWrite(pistonLeft, LOW);
   motorLeft(0, 0);
 }
 
-void secondActuation() {
-  Serial.println("Second");
-  digitalWrite(pistonCenter, HIGH);
+void secondActuation() {                                  //Hopper Actuation
+  Serial.println("Second");                               //Middle Piston is actuated
+  digitalWrite(pistonCenterIn, LOW);
+  digitalWrite(pistonCenterOut, HIGH);                     //Then right motor for pushing the ball is turned ON
+  curval = PID((count1), target_encoder);                 //Then right piston is actuated
+  drive(0, 0, curval);                                    //Right motor is turned OFF
+  ps_read();
   delay_ms(500);
-  digitalWrite(pistonCenter, LOW);
-  delay_ms(100);
+  ps_read();
+  curval = PID((count1), target_encoder);
+  drive(0, 0, curval);
+  digitalWrite(pistonCenterOut, LOW);
+  digitalWrite(pistonCenterIn, HIGH);
+  ps_read();
+  delay_ms(2000);
+  ps_read();
+  curval = PID((count1), target_encoder);
+  drive(0, 0, curval);
   digitalWrite(pistonRight, HIGH);
   motorRight(1, 255);
+  ps_read();
   delay_ms(3000);
+  ps_read();
+  curval = PID((count1), target_encoder);
+  drive(0, 0, curval);
   digitalWrite(pistonRight, LOW);
   motorRight(0, 0);
 }
 
-void thirdActuation() {
+void thirdActuation() {                                    //Middle Piston is Actuated
   Serial.println("Third");
-  digitalWrite(pistonCenter, HIGH);
+  digitalWrite(pistonCenterOut, HIGH);
+  digitalWrite(pistonCenterIn, LOW);
+  ps_read();
   delay_ms(500);
-  digitalWrite(pistonCenter, LOW);
+  ps_read();
+  curval = PID((count1), target_encoder);
+  drive(0, 0, curval);
+  digitalWrite(pistonCenterOut, LOW);
+  digitalWrite(pistonCenterIn, HIGH);
 }
 
 
 
-void motorRight(bool state, uint8_t vel) {
+void motorRight(bool state, uint8_t vel) {                  //User defined function for Right hopper motor for pushing ball
   digitalWrite(motorRightA, state);
   digitalWrite(motorRightB, LOW);
   analogWrite(pwm, vel);
 }
 
-void motorLeft(bool state, uint8_t vel) {
+void motorLeft(bool state, uint8_t vel) {                   //User defined function for Left hopper motor for pushing ball
   digitalWrite(motorLeftA, state);
   digitalWrite(motorLeftB, LOW);
   analogWrite(pwm, vel);
@@ -414,13 +456,13 @@ void loadingLED(int r, int g, int b, int ms) {
   long int current = millis();
   int msPerLed = ms / NUM_LEDS;
   int i = 0;
-  
-  for(int i=0;i<NUM_LEDS;i++){
-    leds[i] = CRGB(r,g,b);
+
+  for (int i = 0; i < NUM_LEDS; i++) {
+    leds[i] = CRGB(r, g, b);
     FastLED.show();
     delay(msPerLed);
     Serial.println(msPerLed);
-    
+
   }
 }
 
@@ -428,13 +470,13 @@ void loadingLEDrev(int r, int g, int b, int ms) {
   long int current = millis();
   int msPerLed = ms / NUM_LEDS;
   int i = 0;
-  
-  for(int i=NUM_LEDS;i>0;i--){
-    leds[i] = CRGB(r,g,b);
+
+  for (int i = NUM_LEDS; i > 0; i--) {
+    leds[i] = CRGB(r, g, b);
     FastLED.show();
     delay(msPerLed);
     Serial.println(msPerLed);
-    
+
   }
 }
 
@@ -448,14 +490,12 @@ void setup()
   roboclaw.begin(115200);
   Serial.begin(115200);
 
-  pinMode(pistonCenter, OUTPUT);
+  pinMode(potPin, INPUT);
+
+  pinMode(pistonCenterOut, OUTPUT);
+  pinMode(pistonCenterIn, OUTPUT);
   pinMode(pistonRight, OUTPUT);
   pinMode(pistonLeft, OUTPUT);
-  pinMode(motorLeftA, OUTPUT);
-  pinMode(motorLeftB, OUTPUT);
-  pinMode(motorRightA, OUTPUT);
-  pinMode(motorRightB, OUTPUT);
-  
 
   pinMode(upPin, OUTPUT);
   pinMode(dpPin, OUTPUT);
@@ -463,7 +503,6 @@ void setup()
   pinMode(dBackward, OUTPUT);
   pinMode(uForward, OUTPUT);
   pinMode(uBackward, OUTPUT);
-  pinMode(potPin, INPUT);
 
   pinMode(EN1A, INPUT_PULLUP);
   pinMode(EN1B, INPUT_PULLUP);
@@ -473,21 +512,20 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(EN1A), encoder1, RISING);
   attachInterrupt(digitalPinToInterrupt(EN2A), encoder2, RISING);
   delay(1000);
-  loadingLED(0, 255, 0, 1500);
+  setLED(0, 255, 0);
 
 }
 
-int curval = 0;
-
 void loop()
 {
+  int potVal = analogRead(potPin);
+  
   duty = 0;
   ps_read();
-  int motor_val = analogRead(potPin);
 
   powerwindowDuty();
 
-  curval = PID((count1), 0);
+  curval = PID((count1), target_encoder);
   drive(0, 0, curval);
 
   if (button_count == 1 && counter == 0) {
@@ -513,16 +551,19 @@ void loop()
   Serial.print(duty);
   Serial.print("\t enc count \t");
   Serial.print((count1));
+  Serial.print("\t PW enc value \t");
+  Serial.print(count2);
+  
 
 
 }
 
-void loop1()
-{
-  loadingLED(255, 0, 0, 500);
-  delay(100);
-  loadingLEDrev(255, 255, 0,500);
-  delay(100);
+//void loop()
+//{
+//  loadingLED(255, 0, 0, 500);
+//  delay(100);
+//  loadingLEDrev(255, 255, 0,500);
+//  delay(100);
 //  ps_read();
 //  Serial.print(xj1);
 //  Serial.print("\t");
@@ -531,4 +572,4 @@ void loop1()
 //  Serial.print(yj1);
 //  Serial.print("\t");
 //  Serial.println(yj2);
-}
+//}
