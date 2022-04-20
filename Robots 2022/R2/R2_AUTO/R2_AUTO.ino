@@ -71,9 +71,9 @@ int32_t gyro_pid(int16_t target, int16_t current);
 int comp = 0;
 #define GYROSPEED 50
 int targetAngle = 0;
-uint8_t KP_Gyro = 7;
+uint8_t KP_Gyro = 15;
 uint8_t KI_Gyro = 0;
-uint8_t KD_Gyro = 1;
+uint8_t KD_Gyro = 0;
 //Error variables
 long int current_gyro_error = 0, prev_gyro_error = 0, p_gyro_error = 0, i_gyro_error = 0, d_gyro_error = 0;
 float P_gyro = 0, I_gyro = 0, D_gyro = 0;
@@ -206,7 +206,7 @@ void dropBallPoint() {
   else if (xLidar < -50) {
     xLidar = -50;
   }
-  int w = gyro_pid(targetAngle, gyro_read());
+  int w = -gyro_pid(targetAngle, gyro_read());
   w = w + comp * 10;
   if (w > 127) {
     w = 127;
@@ -296,8 +296,8 @@ void turnPoint_startZone() {
 void manualMode() {
   ps_read();
   //  int laserVal = laser_read();
-  int w = gyro_pid(targetAngle, gyro_read());
-  w = w + comp * 10;
+  int w = -gyro_pid(targetAngle, gyro_read());
+  w = w + comp * 50;
   if (w > 127) {
     w = 127;
   }
@@ -305,7 +305,7 @@ void manualMode() {
     w = -127;
   }
   Serial.print(gyro_read());
-  drive(-yj1, xj1, w);
+  drive(yj1, xj1, w);
 }
 
 void fenceFollowBall() {

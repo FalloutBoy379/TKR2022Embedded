@@ -42,7 +42,7 @@ void loop() {
   if (PS5.connected() && lastMessageCounter != PS5.getMessageCounter()) {
     if (counter == 0) {
       counter = 1;
-      PS5.setPlayerLed(0b00000100);
+      PS5.setPlayerLed(0b00001010);
     }
     PS5.setLed(255, 0, 174);
     //    PS5.setLed(20, 255, 20);
