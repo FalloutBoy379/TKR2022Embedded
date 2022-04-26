@@ -1,5 +1,5 @@
-#define DIR 8
-#define STEP 7
+#define DIR 12
+#define STEP 11
 #define SW 4
 #define GRIPPER1 22
 #define GRIPPER2 23
@@ -95,21 +95,21 @@ void loop() {
     data = Serial.read();
   }
   if (data == '1') {
-    positionStacking = LAGORI2;
+    positionStacking = LAGORI1;
   }
   else if (data == '2') {
-    positionStacking = LAGORI3;
+    positionStacking = LAGORI2;
   }
   else if (data == '3') {
-    positionStacking = LAGORI4;
+    positionStacking = LAGORI3;
   }
   else if (data == '4') {
+    positionStacking = LAGORI4;
+  }
+  else if (data == '5') {
     positionStacking = LAGORI5;
   }
   else if (data == '0') {
-    positionStacking = LAGORI1;
-  }
-  else if (data == '5') {
     positionStacking = 0x80;
   }
   else if (data == '6') {
@@ -124,69 +124,47 @@ void loop() {
   else if (data == '9') {
     openMechanism();
   }
-  else if (data == 'a') {
-    vel = 255;
-  }
-  else if (data == 'b') {
-    vel = -255;
-  }
-  else if (data == 'c') {
-    vel = -PID(count, -1600);
-  }
-  else if (data == 'd') {
-    vel = -PID(count, 0);
-  }
-  else if (data == 'e') {
-    digitalWrite(PISTON, HIGH);
-  }
-  else if (data == 'f') {
-    digitalWrite(PISTON, LOW);
-  }
-  else {
-    vel = 0;
-  }
-  if (vel > 255) {
-    vel = 255;
-  }
-  else if (vel < -255) {
-    vel = -255;
-  }
-
-
-  if (vel < 120 && vel > 0) {
-    vel = 0;
-  }
-  else if (vel > -120 && vel < 0) {
-    vel = 0;
-  }
-  drive(vel);
-
+  Serial.print(distanceTracker);
+  Serial.print("\t");
   if (positionStacking == LAGORI2) {
-    Serial.println("Moving to Lagori 2");
+    Serial.print("Moving to Lagori 2");
+    Serial.print("\t");
     moveDistance(LAGORI2POS - distanceTracker);
+    Serial.print(LAGORI2POS - distanceTracker);
+    Serial.print("\t");
     distanceTracker += LAGORI2POS - distanceTracker;
     positionStacking = 0x00;
   }
   else if (positionStacking == LAGORI3) {
-    Serial.println("Moving to Lagori 3");
+    Serial.print("Moving to Lagori 3");
+    Serial.print("\t");
     moveDistance(LAGORI3POS - distanceTracker);
+    Serial.print(LAGORI3POS - distanceTracker);
+    Serial.print("\t");
     distanceTracker += LAGORI3POS - distanceTracker;
     positionStacking = 0x00;
   }
   else if (positionStacking == LAGORI4) {
-    Serial.println("Moving to Lagori 4");
+    Serial.print("Moving to Lagori 4");
+    Serial.print("\t");
     moveDistance(LAGORI4POS - distanceTracker);
+    Serial.print(LAGORI4POS - distanceTracker);
+    Serial.print("\t");
     distanceTracker += LAGORI4POS - distanceTracker;
     positionStacking = 0x00;
   }
   else if (positionStacking == LAGORI5) {
-    Serial.println("Moving to Lagori 5");
+    Serial.print("Moving to Lagori 5");
+    Serial.print("\t");
+    Serial.print(LAGORI5POS - distanceTracker);
+    Serial.print("\t");
     moveDistance(LAGORI5POS - distanceTracker);
     distanceTracker += LAGORI5POS - distanceTracker;
     positionStacking = 0x00;
   }
   else if (positionStacking == LAGORI1) {
-    Serial.println("Lagori 1");
+    Serial.print("Lagori 1");
+    Serial.print("\t");
     moveDistance(LAGORI1POS - distanceTracker);
     distanceTracker = 0;
     positionStacking = 0x00;
@@ -194,15 +172,16 @@ void loop() {
   else if (positionStacking == 0x80) {
     //    Serial.println("moving to home");
     while (digitalRead(SW) == HIGH) {
-      Serial.println("Not homed");
+      Serial.print("Not homed");
       moveDistance(-6);
     }
     if (digitalRead(SW) == LOW) {
-      Serial.println("homed");
+      Serial.print("homed");
       distanceTracker = 0;
       positionStacking = 0x00;
     }
   }
+  Serial.println();
 }
 
 bool moveUp(int vel) {
@@ -226,19 +205,19 @@ bool moveDown(int vel) {
 }
 
 bool moveDistance(long int dist) {
-  Serial.print(dist);
-  Serial.print("\t");
+  //  Serial.print(dist);
+  //  Serial.print("\t");
   if (dist < 0) {
     dist = -dist;
     long int steps = (STEPS_PER_REV * dist) / DISTANCE_PER_REV;
-    Serial.println(steps);
+    //    Serial.println(steps);
     for (int i = 1; i <= steps; i++) {
       moveDown(10);
     }
   }
   else {
     long int steps = (STEPS_PER_REV * dist) / DISTANCE_PER_REV;
-    Serial.println(steps);
+    //    Serial.println(steps);
     for (int i = 1; i <= steps; i++) {
       moveUp(10);
     }
