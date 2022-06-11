@@ -1,9 +1,3 @@
-/*
-  Example sketch for the PS5 Bluetooth library - developed by Kristian Sloth Lauszus
-  For more information visit the Github repository: github.com/felis/USB_Host_Shield_2.0 or
-  send me an e-mail: lauszus@gmail.com
-*/
-
 #include <PS5BT.h>
 #include <usbhub.h>
 #include <SPI.h>
@@ -28,6 +22,7 @@ uint32_t ps_timer;
 
 int xj1, yj1, xj2, yj2, r2, l2;
 int counter = 0;
+char data = '0';
 
 void setup() {
   Serial.begin(9600);
@@ -40,11 +35,21 @@ void loop() {
   Usb.Task();
 
   if (PS5.connected() && lastMessageCounter != PS5.getMessageCounter()) {
+    if(Serial.available()){
+      data = Serial.read();
+    }
+
+    if(data == '0'){
+      PS5.setLed(255, 0, 174);
+    }
+    else if(data == '1'){
+      PS5.setLed(255, 40, 40);
+    }
     if (counter == 0) {
       counter = 1;
       PS5.setPlayerLed(0b00001010);
     }
-    PS5.setLed(255, 0, 174);
+//    PS5.setLed(255, 0, 174);
     //    PS5.setLed(20, 255, 20);
     lastMessageCounter = PS5.getMessageCounter();
     xj1 = PS5.getAnalogHat(LeftHatX);
@@ -105,13 +110,20 @@ void loop() {
     Usb.Task();
     if (PS5.getButtonClick(R1)) Serial.write(232);
     Usb.Task();
+    if (PS5.getButtonClick(MICROPHONE)) Serial.write(233);
+    Usb.Task();
     if (PS5.getButtonClick(SHARE)) Serial.write(246);
     Usb.Task();
     if (PS5.getButtonClick(OPTIONS)) Serial.write(245);
     Usb.Task();
     if (PS5.getButtonClick(PS)) Serial.write(236);
     Usb.Task();
-    if (PS5.getButtonClick(TOUCHPAD)) Serial.write(235);
+    if (PS5.getButtonClick(R3)) Serial.write(247);
+    Usb.Task();
+    if (PS5.getButtonClick(L3)) Serial.write(248);
+    Usb.Task();
+    if(PS5.getButtonClick(TOUCHPAD)) Serial.write(249);
+    Usb.Task();
   }
 }
 

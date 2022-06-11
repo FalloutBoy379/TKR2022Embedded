@@ -112,17 +112,23 @@ void loop() {
   else if (data == '0') {
     positionStacking = 0x80;
   }
-  else if (data == '6') {
+  else if (data == '7') {
     openGripper();
   }
-  else if (data == '7') {
+  else if (data == '6') {
     closeGripper();
   }
-  else if (data == '8') {
+  else if (data == '9') {
     closeMechanism();
   }
-  else if (data == '9') {
+  else if (data == '8') {
     openMechanism();
+  }
+  else if(data == 'a'){
+    moveUp(5);
+  }
+  else if(data == 'b'){
+    moveDown(5);
   }
   Serial.print(distanceTracker);
   Serial.print("\t");
@@ -225,11 +231,13 @@ bool moveDistance(long int dist) {
 }
 
 void closeGripper() {
+  Serial.println("Closing Gripper");
   digitalWrite(GRIPPER1, HIGH);
   digitalWrite(GRIPPER2, LOW);
 }
 
 void openGripper() {
+  Serial.println("Opening Gripper");
   digitalWrite(GRIPPER1, LOW);
   digitalWrite(GRIPPER2, HIGH);
 }
