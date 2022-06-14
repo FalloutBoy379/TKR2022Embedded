@@ -4,8 +4,6 @@
  *  Robot R2 Semi-Autonomous code for Online Game Rules  
  */
 
-
-
 #include <RoboClaw.h>
 #include <Wire.h>
 #include <MPU6050_light.h>
@@ -25,6 +23,36 @@
 
 void lights_setup();                              //Setup lights as output pins
 void lights_write(int r, int g, int b);           //Write RGB values to LED                             
+
+//---------------------------------------------------------------------------------------------------------
+//------------------------------------------------- ULTRASOUND --------------------------------------------
+//---------------------------------------------------------------------------------------------------------
+int getPairDifference(int pairN);
+int readUltrasound(int echoPin);
+
+#include <NewPing.h>
+
+#define SONAR_NUM 4      // Number of sensors.
+#define MAX_DISTANCE 200 // Maximum distance (in cm) to ping.
+
+NewPing sonar[SONAR_NUM] = {   // Sensor object array.
+  NewPing(27, 26, MAX_DISTANCE), // Each sensor's trigger pin, echo pin, and max distance to ping. 
+  NewPing(29, 28, MAX_DISTANCE), 
+  NewPing(31, 30, MAX_DISTANCE),
+  NewPing(33, 32, MAX_DISTANCE)
+};
+
+#define KP_diffCorrection 4
+#define KI_diffCorrection 0
+#define KD_diffCorrection 2
+
+int prev_error_diffCorrection;
+
+
+#define KP_fenceFollowing 6
+#define KI_fenceFollowing 0
+#define KD_fenceFollowing 2.5
+int prev_error_fenceFollowing;
 
 //---------------------------------------------------------------------------------------------------------
 //------------------------------------------------- MODE BUTTONS--------------------------------------------
@@ -150,6 +178,7 @@ int Xflag = 0, loop3Counter = 0;
 float limitVar(float var, float target);
 int loopVar = 0;
 
+int R2BallPath = 0;
 void interUART_setup();
 void interUART_write(char data);
 int xCounter=0;
@@ -183,6 +212,10 @@ void setup() {
   interUART_write('3');
   interUART_write('4'); //Go to Lagori 4
   currentPos = 4;
+//  setup_ultrasound(ECHO1);
+//  setup_ultrasound(ECHO2);
+//  setup_ultrasound(ECHO3);
+//  setup_ultrasound(ECHO4);
 }
 void loop() {
   if (RX_count == 1) {
@@ -238,6 +271,18 @@ void loop() {
       Serial.print(gyro_read());
       Serial.print("\t");
       Serial.println(w);*/
+//    if(R2BallPath == 0){
+//      lights_write(255, 255, 0);
+//    w = PID_diffCorrection(getPairDifference(2), 0);
+//    xj1 = xj1 + PID_fenceFollowing((readUltrasound(2)+readUltrasound(3))/2, 15);
+//    }
+//    else if(R2BallPath == 1){
+//      lights_write(255, 0, 255);
+//      w = PID_diffCorrection(getPairDifference(1), 0);
+//    yj1 = yj1 + PID_fenceFollowing((readUltrasound(0)+readUltrasound(1))/2, 30);
+//    }
+    xj1 = (cos(gyro_read())*xj1) - (sin(gyro_read()) * yj1);
+    yj1 = (cos(gyro_read())*xj1) + (sin(gyro_read()) * yj1);
     drive(-yj1, xj1, -w);
   }
 }
@@ -452,7 +497,6 @@ bool ps_read() {
   }
   if (butt[PS_DOWN] == 1)
   {
-    //    Serial.println("SEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY");
     butt[PS_DOWN] = 0;
     if (botMode == ROUND2) {
       if (currentPos == 5) {
@@ -539,29 +583,12 @@ bool ps_read() {
   }
   if (butt[PS_TRIANGLE] == 1)
   {
-    if(xCounter == 0){
-      comp += 9;
-      xCounter = 1;
-    }
-    else if(xCounter == 1){
-      comp+=-9;
-      xCounter = 0;
-    }
-//    comp += ;
-    loopVar = 3;
-    loop3Counter = millis();
-    Serial.println("triangle");
+    targetAngle = targetAngle - 90;
     butt[PS_TRIANGLE] = 0;
   }
   if (butt[PS_CROSS] == 1)
   {
-    if (xCounter == 0) {
-      comp += -9;
-    }
-    else if (xCounter == 1) {
-      comp += 9;
-    }
-    Serial.println("cross");
+    targetAngle = targetAngle + 90;
     butt[PS_CROSS] = 0;
   }
   if (butt[PS_L1] == 1)
@@ -697,10 +724,55 @@ float limitVar(float var, float target) {
 
 void button_setup() {
   pinMode(BUTTON_ROUND1, INPUT);
-  pinMode(BUTTON_ROUND2, INPUT);
+  pinMode(BUTTON_ROUND2, INPUT);  
   pinMode(BUTTON_ROUND1_LED, OUTPUT);
   pinMode(BUTTON_ROUND2_LED, OUTPUT);
 
   digitalWrite(BUTTON_ROUND1_LED, LOW);
   digitalWrite(BUTTON_ROUND2_LED, LOW);
+}
+
+//---------------------------------------------------------------------------------------------------------
+//------------------------------------------------- ULTRASOUND --------------------------------------------
+//---------------------------------------------------------------------------------------------------------
+
+int readUltrasound(int i){
+  return sonar[i].ping_cm();
+}
+
+int PID_diffCorrection(int currentValue, int targetValue) {
+  int error = targetValue - currentValue;
+
+  int prop_error = error;
+  int integral_error = error + prev_error;
+  int diff_error = error - prev_error;
+
+  prev_error_diffCorrection = error;
+  return (KP_diffCorrection * prop_error) + (KI_diffCorrection * integral_error) + (KD_diffCorrection * diff_error);
+}
+
+int PID_fenceFollowing(int currentValue, int targetValue) {
+  int error = targetValue - currentValue;
+
+  int prop_error = error;
+  int integral_error = error + prev_error;
+  int diff_error = error - prev_error;
+
+  prev_error_fenceFollowing = error;
+  return (KP_fenceFollowing * prop_error) + (KI_fenceFollowing * integral_error) + (KD_fenceFollowing * diff_error);
+}
+
+int getPairDifference(int pairN){
+  int r1 = 0;
+  int r2 = 0;
+  if(pairN == 1){
+    r1 = readUltrasound(0);
+    r2 = readUltrasound(1);
+  }
+  else if(pairN == 2){
+    r1 = readUltrasound(2);
+    r2 = readUltrasound(3);
+  }
+
+  return (r1-r2);
 }
