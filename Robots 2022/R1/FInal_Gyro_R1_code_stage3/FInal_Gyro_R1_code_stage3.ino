@@ -536,7 +536,7 @@ void loop()                                                                     
   {
     digitalWrite(centrePistonOut,HIGH);
     digitalWrite(centrePistonIn,LOW);
-    if(millis()-time_centre == 3000)
+    if(millis()-time_centre == 1000)
     {
       digitalWrite(centrePistonOut,LOW);
       digitalWrite(centrePistonIn,HIGH);
