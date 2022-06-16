@@ -25,7 +25,7 @@ int dForward = 38;
 int dBackward = 39;
 
 volatile int buttonCount_throwing = 0;                             //button count for odd||even counts for starting or stopping Throwing
-
+int duty = 0;
 ///////////////////////////////////////////////////////////////////////////////////////////
                                                           //Defined pins for pistons
 int centrePistonOut = 32;
@@ -192,13 +192,13 @@ bool ps_read() {
   if (butt[PS_UP] == 1)
   {
 //    K_BOHH_Flag = 1;
-    roboclaw.DutyM1(address1, 23000);
+    duty = 23000;
     Serial.println("Up");
     butt[PS_UP] = 0;
   }
   if (butt[PS_DOWN] == 1)
   {
-    roboclaw.DutyM1(address1, -20000);
+    duty = -20000;
 //    C_BOHH_Flag = 1;
     Serial.println("Down");
     butt[PS_DOWN] = 0;
@@ -329,7 +329,7 @@ void drive(double A_x, double A_y, double ang_s)                                
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void powerwindowDuty(int duty)                                               //PowerWindow Throwing angle function
+void powerwindowDuty()                                                      //PowerWindow Throwing angle function
 {
   roboclaw.DutyM1(address1, duty);
 }
@@ -450,6 +450,8 @@ void loop()                                                                     
 
   mpu.update();
   mpu2.update();
+
+  powerwindowDuty();
   
   /*____________________________________________________________________________________________________*/
   // Minor target angle adjustment for throwing
@@ -650,11 +652,11 @@ void loop()                                                                     
 //  Serial.print(targetGyroAngle_drive);
 //  Serial.print("\t");
 //
-//  Serial.print("Drive Angle: :");
-//  Serial.print(driveGyroAngle );
-// // Serial.print(" Throwing Angle: :");
-// // Serial.print(throwingGyroAngle);
-//  Serial.print("\t");
+  Serial.print("Drive Angle: :");
+  Serial.print(driveGyroAngle );
+  Serial.print(" Throwing Angle: :");
+  Serial.print(throwingGyroAngle);
+  Serial.print("\t");
 //  
 //  Serial.print(throwingPIDval);
 //  Serial.print("\t");
@@ -662,8 +664,8 @@ void loop()                                                                     
 //  Serial.print(pot1);
 //  Serial.print("\t");
 //  Serial.println(pot2);
-  Serial.print(buttonCount_throwing);
-  Serial.print("\t");
+//  Serial.print(buttonCount_throwing);
+//  Serial.print("\t");
 //  Serial.print(i);
 //  Serial.print("\t");
 //  Serial.print(j);
@@ -672,11 +674,11 @@ void loop()                                                                     
 //  Serial.print("\t");
 //  Serial.print(l);
 //  Serial.print("\t");
-  Serial.print(centrePiston_Flag);
-  Serial.print("\t");
-  Serial.print(leftPiston_Flag);
-  Serial.print("\t");
-  Serial.println(rightPiston_Flag);
+//  Serial.print(centrePiston_Flag);
+//  Serial.print("\t");
+//  Serial.print(leftPiston_Flag);
+//  Serial.print("\t");
+//  Serial.println(rightPiston_Flag);
   
   /*____________________________________________________________________________________________________*/
 
