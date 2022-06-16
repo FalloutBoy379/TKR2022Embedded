@@ -11,18 +11,18 @@ MPU6050 mpu2(Wire);
 
 ///////////////////////////////////////////////////////////////////////////////////////////
                                                           //Pins for Mosfet switching of Gyro
-int gyroSwitch1 = 5;
+int gyroSwitch1 = 7;
 int gyroSwitch2 = 6;
 
 ///////////////////////////////////////////////////////////////////////////////////////////
                                                           //Defined pins for Throwing
-int uPin = 9;
-int uForward = 40;
-int uBackward = 41;
+int uPin = 3;
+int uForward = 41;
+int uBackward = 40;
 
-int dPin = 10;
-int dForward = 42;
-int dBackward = 43;
+int dPin = 2;
+int dForward = 38;
+int dBackward = 39;
 
 volatile int buttonCount_throwing = 0;                             //button count for odd||even counts for starting or stopping Throwing
 
@@ -191,13 +191,15 @@ bool ps_read() {
   }
   if (butt[PS_UP] == 1)
   {
-    K_BOHH_Flag = 1;
+//    K_BOHH_Flag = 1;
+    roboclaw.DutyM1(address1, 23000);
     Serial.println("Up");
     butt[PS_UP] = 0;
   }
   if (butt[PS_DOWN] == 1)
   {
-    C_BOHH_Flag = 1;
+    roboclaw.DutyM1(address1, -20000);
+//    C_BOHH_Flag = 1;
     Serial.println("Down");
     butt[PS_DOWN] = 0;
   }
@@ -405,11 +407,10 @@ void Throwing(int a, int b)
 {
   digitalWrite(uForward,HIGH);
   digitalWrite(uBackward,LOW);
+  analogWrite(uPin,a);
 
   digitalWrite(dBackward,HIGH);
   digitalWrite(dForward,LOW);
-
-  analogWrite(uPin,a);
   analogWrite(dPin,b);
 }
 
@@ -536,7 +537,7 @@ void loop()                                                                     
   {
     digitalWrite(centrePistonOut,HIGH);
     digitalWrite(centrePistonIn,LOW);
-    if(millis()-time_centre == 1000)
+    if(millis()-time_centre > 1000)
     {
       digitalWrite(centrePistonOut,LOW);
       digitalWrite(centrePistonIn,HIGH);
@@ -554,7 +555,7 @@ void loop()                                                                     
   if(leftPiston_Flag == 1)
   {
     digitalWrite(leftPiston,HIGH);
-    if(millis()-time_left == 3000)
+    if(millis()-time_left > 3000)
     {
       digitalWrite(leftPiston,LOW);
       leftPiston_Flag = 0;
@@ -570,7 +571,7 @@ void loop()                                                                     
   if(rightPiston_Flag == 1)
   {
     digitalWrite(rightPiston,HIGH);
-    if(millis()-time_right == 3000)
+    if(millis()-time_right > 3000)
     {
       digitalWrite(rightPiston,LOW);
       rightPiston_Flag = 0;
@@ -587,11 +588,11 @@ void loop()                                                                     
   {
     digitalWrite(gyroSwitch1,LOW);
     digitalWrite(gyroSwitch2,LOW);
-    
+
     Throwing(i,j);
     if(i<250 && i>=0)
     {
-      i += 10;
+      i = i + 10;
     }
     else if(i>=250)
     {
@@ -606,27 +607,31 @@ void loop()                                                                     
     {
       j = 160;
     }
+    k = 250;
+    l = 160;
   }
   else if(buttonCount_throwing%2 == 0 && buttonCount_throwing != 0)
   {
     Throwing(k,l);
     if(k<=250 && k>0)
     {
-      k -= 10;
+      k = k - 10;
     }
     else if(k <= 0)
     {
       k = 0;
     }
     //////////////////
-    if(j<=160 && j>0)
+    if(l<=160 && l>0)
     {
-      j -= 10;
+      l = l - 10;
     }
-    else if(j <= 0)
+    else if(l <= 0)
     {
-      j = 0;
+      l = 0;
     }
+    i = 0;
+    j = 0;
   }
   
   /*____________________________________________________________________________________________________*/
@@ -657,7 +662,21 @@ void loop()                                                                     
 //  Serial.print(pot1);
 //  Serial.print("\t");
 //  Serial.println(pot2);
-//  Serial.println(buttonCount_throwing);
+  Serial.print(buttonCount_throwing);
+  Serial.print("\t");
+//  Serial.print(i);
+//  Serial.print("\t");
+//  Serial.print(j);
+//  Serial.print("\t");
+//  Serial.print(k);
+//  Serial.print("\t");
+//  Serial.print(l);
+//  Serial.print("\t");
+  Serial.print(centrePiston_Flag);
+  Serial.print("\t");
+  Serial.print(leftPiston_Flag);
+  Serial.print("\t");
+  Serial.println(rightPiston_Flag);
   
   /*____________________________________________________________________________________________________*/
 
