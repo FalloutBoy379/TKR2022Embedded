@@ -6,8 +6,8 @@ RoboClaw roboclaw(&Serial1, 10000);
 #define address1 128
 #define address2 129
 
-MPU6050 mpu(Wire);
-MPU6050 mpu2(Wire);
+MPU6050 mpu(Wire);//drive
+//MPU6050 mpu2(Wire);//throwing
 
 ///////////////////////////////////////////////////////////////////////////////////////////
                                                           //Pins for Mosfet switching of Gyro
@@ -26,16 +26,12 @@ int dBackward = 39;
 
 volatile int buttonCount_throwing = 0;                             //button count for odd||even counts for starting or stopping Throwing
 int duty = 0;
-int Up_flag = 0;
-int Down_flag = 0;
-int Up = 0;
-int Down = 0;
 ///////////////////////////////////////////////////////////////////////////////////////////
                                                           //Defined pins for pistons
 int centrePistonOut = 32;
-int centrePistonIn = 28;
+int centrePistonIn = 30;
 int leftPiston = 26;
-int rightPiston = 35;
+int rightPiston = 28;
                                                           //Flags for pistons
 int centrePiston_Flag = 0;
 int leftPiston_Flag = 0;
@@ -66,21 +62,12 @@ int F_BOHH_Flag = 0;
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-#define KP_drive 0                                         //PID Values for DRIVE HARDCODED
-#define KI_drive 0
-#define KD_drive 0
+#define KPG 21                                         //PID Values for DRIVE GYRO
+#define KIG 0
+#define KDG 0
 int prev_error_drive = 0;
 
 int PID_drive(int currentValue_drive, int targetValue_drive);
-
-///////////////////////////////////////////////////////////////////////////////////////////
-
-//#define KP_driveIP 0                                       //PID Values for DRIVE with IP
-//#define KI_driveIP 0
-//#define KD_driveIP 0
-//int prev_error_driveIP = 0;
-//
-//int PID_driveIP(int currentValue_driveIP, int targetValue_driveIP);
 
 //////////////////////////////////////////////////////////////////////////////////////////
 
@@ -195,17 +182,13 @@ bool ps_read() {
   }
   if (butt[PS_UP] == 1)
   {
-//    K_BOHH_Flag = 1;
-    Up_flag = 1;
-    Up = millis();
-    Serial.println("Up");
+    duty = 23000;
+    Serial.println("Up"); 
     butt[PS_UP] = 0;
   }
   if (butt[PS_DOWN] == 1)
   {
-//    C_BOHH_Flag = 1;
-    Down_flag = 1;
-    Down = millis();
+    duty = -20000;
     Serial.println("Down");
     butt[PS_DOWN] = 0;
   }
@@ -308,13 +291,10 @@ bool ps_read() {
 void drive(double A_x, double A_y, double ang_s)                                 //Drive Equation
 {
   int F1, F2, F3;
-  /*
-     F3 is head and is connected to single channel MD
-     131 is double channel and 129 is for single channel
-  */
+
   F1 = (0.5773 * A_x) + (0.333 * A_y) + (0.333 * ang_s);
   F2 = -(0.5773 * A_x) + (0.333 * A_y) + (0.333 * ang_s);
-  F3 = (0 * A_x) + (0.666 * A_y) - (0.333 * ang_s);
+  F3 = (0 * A_x) - (0.666 * A_y) + (0.333 * ang_s);
 
   if(F1>200)
   {
@@ -328,22 +308,16 @@ void drive(double A_x, double A_y, double ang_s)                                
     F2=-200;
     F3=-200;
   }
-
+  
   F1 = map(F1, -200, 200, -32000, 32000);
   F2 = map(F2, -200, 200, -32000, 32000);
   F3 = map(F3, -200, 200, -32000, 32000);
 
-  roboclaw.DutyM2(address1, -F1);
-  roboclaw.DutyM2(address2, -F2);
-  roboclaw.DutyM1(address2 , F3);
 
-  Serial.print("\t");
-  Serial.print(F1);
-  Serial.print("\t");
-  Serial.print(F2);
-  Serial.print("\t");
-  Serial.print(F3);
-  Serial.print("\n");
+  roboclaw.DutyM2(address1, -F1);
+  roboclaw.DutyM2(address2, F2);
+  roboclaw.DutyM1(address2 ,F3);
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -358,36 +332,23 @@ void powerwindowDuty()                                                      //Po
 int PID_drive(int currentValue_drive, int targetValue_drive)                //PID code block for DRIVE HARDCODED
 {
   int error_drive = targetValue_drive - currentValue_drive;
-  
+
   int prop_error_drive = error_drive;
-  int integral_error_drive = error_drive + integral_error_drive;
+  int integral_error_drive = error_drive + prev_error_drive;
   int diff_error_drive = error_drive - prev_error_drive;
 
   prev_error_drive = error_drive;
-  return ((KP_drive * prop_error_drive) + (KI_drive * integral_error_drive) + (KD_drive * diff_error_drive));
+  return ((KPG * prop_error_drive) + (KIG * integral_error_drive) + (KDG * diff_error_drive));
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//int PID_driveIP(int currentValue_driveIP, int targetValue_driveIP)          //PID code block for DRIVE with IP
-//{
-//  int error_driveIP = targetValue_driveIP - currentValue_driveIP;
-//
-//  int prop_error_driveIP = error_driveIP;
-//  int integral_error_driveIP = error_driveIP + prev_error_driveIP;
-//  int diff_error_driveIP = error_driveIP - prev_error_driveIP;
-//
-//  prev_error_driveIP = error_driveIP;
-//  return ((KP_driveIP * prop_error_driveIP) + (KI_driveIP * integral_error_driveIP) + (KD_driveIP * diff_error_driveIP));
-//}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 int PID_throwing(int currentValue_throwing, int targetValue_throwing)      //PID code block for THROWING
-{   int error_throwing = targetValue_throwing - currentValue_throwing;
+{
+  int error_throwing = targetValue_throwing - currentValue_throwing;
 
   int prop_error_throwing = error_throwing;
-  int integral_error_throwing = error_throwing + integral_error_throwing;
+  int integral_error_throwing = error_throwing + prev_error_throwing;
   int diff_error_throwing = error_throwing - prev_error_throwing;
 
   prev_error_throwing = error_throwing;
@@ -399,21 +360,13 @@ int PID_throwing(int currentValue_throwing, int targetValue_throwing)      //PID
 void gyroSetup()                                                                                       //Function for setting up both gyros
 {
   digitalWrite(gyroSwitch1,HIGH);
-  digitalWrite(gyroSwitch2,HIGH);
 
-  delay(500);
-
-  mpu.setAddress(0x68); //drive
-  mpu2.setAddress(0x69);  // throwing
+  mpu.setAddress(0x69); //drive
   byte status = mpu.begin();
-  byte status2 = mpu2.begin();
   Serial.print(F("MPU6050-1 status: "));
   Serial.println(status);
-  Serial.print(F("MPU6050-2 status: "));
-  Serial.println(status2);
   Serial.println(F("Calculating offsets, do not move MPU6050"));
-  mpu.calcOffsets(true,true); // gyro and accelero
-  mpu2.calcOffsets(true,true); // gyro and accelero
+  mpu.calcOffsets(); // gyro and accelero
   Serial.println("Done!\n");
 }
 
@@ -456,8 +409,7 @@ void setup()                                                                    
   pinMode(dForward,OUTPUT);
   pinMode(dBackward,OUTPUT);
 
-  pinMode(gyroSwitch1,OUTPUT);
-  pinMode(gyroSwitch2,OUTPUT);
+  //pinMode(gyroSwitch1,OUTPUT);
 
   gyroSetup();
 }
@@ -469,29 +421,8 @@ void loop()                                                                     
   ps_read();
 
   mpu.update();
-  mpu2.update();
-
-  /*____________________________________________________________________________________________________*/
-  //Manual Throwing
-
-  if(Up_flag == 1){
-    duty = 23000;
-  }
-  if(millis()-Up >100){
-    duty = 0;
-    Up_flag = 0;
-  }
-  powerwindowDuty();
-  if(Down_flag == 1){
-    duty = -20000;
-  }
-  if(millis()-Down >100){
-    duty = 0;
-    Down_flag = 0;
-  }
 
   powerwindowDuty();
-  
   
   /*____________________________________________________________________________________________________*/
   // Minor target angle adjustment for throwing
@@ -514,76 +445,68 @@ void loop()                                                                     
   {
     targetGyroAngle_drive--;
   }
+  
 
   /*____________________________________________________________________________________________________*/
   //Flag conditions for BOHH targets
   if(I_BOHH_Flag == 1)
   {
     targetGyroAngle_throwing = 0;
-    targetGyroAngle_drive = 0;
+    targetGyroAngle_drive = 29;
   }
-  ps_read();
   if(A_BOHH_Flag == 1)
   {
     targetGyroAngle_throwing = 0;
-    targetGyroAngle_drive = 0;
+    targetGyroAngle_drive = -30;
   }
-  ps_read();
   if(K_BOHH_Flag == 1)
   {
     targetGyroAngle_throwing = 0;
-    targetGyroAngle_drive = 0;
+    targetGyroAngle_drive = 62;
   }
-  ps_read();
   if(C_BOHH_Flag == 1)
   {
     targetGyroAngle_throwing = 0;
-    targetGyroAngle_drive = 0;
+    targetGyroAngle_drive = -65;
   }
-  ps_read();
   if(H_BOHH_Flag == 1)
   {
     targetGyroAngle_throwing = 0;
-    targetGyroAngle_drive = 0;
+    targetGyroAngle_drive = 43;
   }
-  ps_read();
   if(E_BOHH_Flag == 1)
   {
     targetGyroAngle_throwing = 0;
-    targetGyroAngle_drive = 0;
+    targetGyroAngle_drive = -46;
   }
-  ps_read();
   if(J_BOHH_Flag == 1)
   {
     targetGyroAngle_throwing = 0;
-    targetGyroAngle_drive = 0;
+    targetGyroAngle_drive = 43;
   }
-  ps_read();
   if(B_BOHH_Flag == 1)
   {
     targetGyroAngle_throwing = 0;
-    targetGyroAngle_drive = 0;
+    targetGyroAngle_drive = -43;
   }
-  ps_read();
   if(G_BOHH_Flag == 1)
   {
     targetGyroAngle_throwing = 0;
-    targetGyroAngle_drive = 0;
+    targetGyroAngle_drive = 24;
   }
-  ps_read();
   if(D_BOHH_Flag == 1)
   {
     targetGyroAngle_throwing = 0;
-    targetGyroAngle_drive = 0;
+    targetGyroAngle_drive = -28;
   }
-  ps_read();
   if(F_BOHH_Flag == 1)
   {
     targetGyroAngle_throwing = 0;
-    targetGyroAngle_drive = 0;
+    targetGyroAngle_drive = 45;
   }
-  ps_read();
-  
+  mpu.update();
+  int sudhaar = PID_drive(mpu.getAngleZ(),targetGyroAngle_drive);
+  drive(0, 0, sudhaar);
   /*____________________________________________________________________________________________________*/
   //Centre Piston Actuation
   if(centrePiston_Flag == 1)
@@ -602,7 +525,6 @@ void loop()                                                                     
     digitalWrite(centrePistonOut,LOW);
     digitalWrite(centrePistonIn,HIGH);
   }
-  ps_read();
 
   /*____________________________________________________________________________________________________*/
   //Left Piston Actuation
@@ -619,7 +541,6 @@ void loop()                                                                     
   {
     digitalWrite(leftPiston,LOW);
   }
-  ps_read();
 
   /*____________________________________________________________________________________________________*/
   //Right Piston Actuation
@@ -636,14 +557,12 @@ void loop()                                                                     
   {
     digitalWrite(rightPiston,LOW);
   }
-  ps_read();
 
   /*____________________________________________________________________________________________________*/
   //Throwing
   if(buttonCount_throwing%2 != 0)
   {
-    digitalWrite(gyroSwitch1,LOW);
-    digitalWrite(gyroSwitch2,LOW);
+    //digitalWrite(gyroSwitch1,LOW);
 
     Throwing(i,j);
     if(i<250 && i>=0)
@@ -654,7 +573,6 @@ void loop()                                                                     
     {
       i = 250;
     }
-    ps_read();
     //////////////////
     if(j<160 && j>=0)
     {
@@ -666,7 +584,6 @@ void loop()                                                                     
     }
     k = 250;
     l = 160;
-    ps_read();
   }
   else if(buttonCount_throwing%2 == 0 && buttonCount_throwing != 0)
   {
@@ -679,7 +596,6 @@ void loop()                                                                     
     {
       k = 0;
     }
-    ps_read();
     //////////////////
     if(l<=160 && l>0)
     {
@@ -691,54 +607,8 @@ void loop()                                                                     
     }
     i = 0;
     j = 0;
-    ps_read();
+    
+    //digitalWrite(gyroSwitch1,HIGH);
   }
   
-  /*____________________________________________________________________________________________________*/
-  //Angle of gyros
-  int driveGyroAngle = mpu.getAngleZ();
-  int throwingGyroAngle = mpu2.getAngleZ();
-
-  //Value of PIDs
-  int throwingPIDval = PID_throwing(throwingGyroAngle, targetGyroAngle_throwing);
-  int drivePIDval = PID_drive(driveGyroAngle, targetGyroAngle_drive);
-
-  /*____________________________________________________________________________________________________*/
-  
-//  Serial.print(targetGyroAngle_throwing);
-//  Serial.print("\t");
-//  Serial.print(targetGyroAngle_drive);
-//  Serial.print("\t");
-//
-//  Serial.print("Drive Angle: :");
-//  Serial.print(driveGyroAngle );
-//  Serial.print(" Throwing Angle: :");
-//  Serial.print(throwingGyroAngle);
-//  Serial.println("\t");
-//  
-//  Serial.print(throwingPIDval);
-//  Serial.print("\t");
-//  Serial.println(drivePIDval);
-//  Serial.print(pot1);
-//  Serial.print("\t");
-//  Serial.println(pot2);
-//  Serial.print(buttonCount_throwing);
-//  Serial.print("\t");
-//  Serial.print(i);
-//  Serial.print("\t");
-//  Serial.print(j);
-//  Serial.print("\t");
-//  Serial.print(k);
-//  Serial.print("\t");
-//  Serial.print(l);
-//  Serial.print("\t");
-//  Serial.print(centrePiston_Flag);
-//  Serial.print("\t");
-//  Serial.print(leftPiston_Flag);
-//  Serial.print("\t");
-//  Serial.println(rightPiston_Flag);
-//Serial.print(duty);
-  
-  /*____________________________________________________________________________________________________*/
-
 }
