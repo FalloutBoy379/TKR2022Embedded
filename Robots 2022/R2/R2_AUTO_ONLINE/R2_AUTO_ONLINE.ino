@@ -192,7 +192,7 @@ void setup() {
   lights_setup();
   button_setup();
   roboclaw_setup();
-  gyro_setup();
+//  gyro_setup();
   ps_setup();
   interUART_setup();
   delay(1000);
@@ -218,6 +218,7 @@ void setup() {
 //  setup_ultrasound(ECHO4);
 }
 void loop() {
+  Serial.println(RX_count);
   if (RX_count == 1) {
     lights_write(0, 255, 0);
     ps_read();

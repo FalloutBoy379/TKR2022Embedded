@@ -33,21 +33,21 @@ void setup() {
 
 void loop() {
   Usb.Task();
-
+//  Serial.write(198);
   if (PS5.connected() && lastMessageCounter != PS5.getMessageCounter()) {
     if(Serial.available()){
       data = Serial.read();
     }
 
-    if(data == '0'){
+    if(data == '1'){
       PS5.setLed(255, 0, 174);
     }
-    else if(data == '1'){
+    else if(data == '0'){
       PS5.setLed(255, 40, 40);
     }
     if (counter == 0) {
       counter = 1;
-      PS5.setPlayerLed(0b00001010);
+      PS5.setPlayerLed(0b00000100);
     }
 //    PS5.setLed(255, 0, 174);
     //    PS5.setLed(20, 255, 20);
@@ -110,7 +110,7 @@ void loop() {
     Usb.Task();
     if (PS5.getButtonClick(R1)) Serial.write(232);
     Usb.Task();
-    if (PS5.getButtonClick(MICROPHONE)) Serial.write(233);
+    if (PS5.getButtonClick(TOUCHPAD)) Serial.write(233);
     Usb.Task();
     if (PS5.getButtonClick(SHARE)) Serial.write(246);
     Usb.Task();
@@ -118,12 +118,12 @@ void loop() {
     Usb.Task();
     if (PS5.getButtonClick(PS)) Serial.write(236);
     Usb.Task();
-    if (PS5.getButtonClick(R3)) Serial.write(247);
-    Usb.Task();
-    if (PS5.getButtonClick(L3)) Serial.write(248);
-    Usb.Task();
-    if(PS5.getButtonClick(TOUCHPAD)) Serial.write(249);
-    Usb.Task();
+//    if (PS5.getButtonClick(R3)) Serial.write(247);
+//    Usb.Task();
+//    if (PS5.getButtonClick(L3)) Serial.write(248);
+//    Usb.Task();
+//    if(PS5.getButtonClick(TOUCHPAD)) Serial.write(249);
+//    Usb.Task();
   }
 }
 

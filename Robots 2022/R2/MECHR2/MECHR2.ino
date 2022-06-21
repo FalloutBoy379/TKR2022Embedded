@@ -1,9 +1,9 @@
-#define DIR 12
+#define DIR 10
 #define STEP 11
-#define SW 4
-#define GRIPPER1 22
-#define GRIPPER2 23
-#define INOUT 24
+#define SW 8
+#define GRIPPER1 A2
+#define GRIPPER2 A3
+#define INOUT A4
 
 #define STEPS_PER_REV 6400
 #define DISTANCE_PER_REV 42 //mm
@@ -54,14 +54,7 @@ volatile int count = 0;
 int vel = 0;
 
 void setup() {
-  Serial2.begin(115200);
-  pinMode(EN1, INPUT_PULLUP);
-  pinMode(EN2, INPUT_PULLUP);
-  pinMode(DIR1, OUTPUT);
-  pinMode(DIR2, OUTPUT);
-  pinMode(PWM, OUTPUT);
-  pinMode(PISTON, OUTPUT);
-  attachInterrupt(digitalPinToInterrupt(EN1), encoder, RISING);
+//  Serial2.begin(115200);
   pinMode(DIR, OUTPUT);
   pinMode(STEP, OUTPUT);
   pinMode(SW, INPUT_PULLUP);
@@ -94,6 +87,8 @@ void loop() {
   if (Serial.available()) {
     data = Serial.read();
   }
+  Serial.print("data is: ");
+  Serial.println(data);
   if (data == '1') {
     positionStacking = LAGORI1;
   }
