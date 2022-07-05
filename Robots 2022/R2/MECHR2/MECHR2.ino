@@ -17,10 +17,10 @@
 #define HOMPOS 0xFF
 
 #define LAGORI1POS 0
-#define LAGORI2POS 200
-#define LAGORI3POS 400
-#define LAGORI4POS 600
-#define LAGORI5POS 760
+#define LAGORI2POS 340
+#define LAGORI3POS 540
+#define LAGORI4POS 740
+#define LAGORI5POS 900
 
 int x = 0;
 int period = 0;

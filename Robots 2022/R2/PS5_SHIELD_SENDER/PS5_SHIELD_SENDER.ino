@@ -97,9 +97,9 @@ void loop() {
     Usb.Task();
     if (PS5.getButtonClick(LEFT)) Serial.write(242);
     Usb.Task();
-//    if(r2>190){
-//      Serial.write(241);
-//    }
+    if(r2>190){
+      Serial.write(241);
+    }
     if (PS5.getButtonClick(UP)) Serial.write(241);
     Usb.Task();
     if (PS5.getButtonClick(SQUARE)) Serial.write(238);
