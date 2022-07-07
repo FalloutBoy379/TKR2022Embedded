@@ -3,7 +3,7 @@
 #include <MPU6050_light.h>
 
 //---------------------------------------------------------------------------------------------------------
-//-------------------------------------------------- ROBOCLAW ---------------------------------------------
+//-------------------------------------------------- DRIVE ------------------------------------------------
 //---------------------------------------------------------------------------------------------------------
 RoboClaw roboclaw(&Serial1, 10000);
 bool roboclaw_setup();
@@ -17,9 +17,124 @@ float M1Speed, M2Speed, M3Speed;
 int Xflag = 0, loop3Counter = 0;
 #define SAFESPEED 75
 
+class BTS {
+  public:
+    enum mode {
+      FORWARD,
+      REVERSED
+    };
+
+    BTS(int pwm, int dir1, int dir2) {
+      pinMode(pwm, OUTPUT);
+      pinMode(dir1, OUTPUT);
+      pinMode(dir2, OUTPUT);
+      PWM = pwm;
+      DIR1 = dir1;
+      DIR2 = dir2;
+      setMaxPWM(255);
+    }
+
+    void setDirection(mode motormode) {
+      if (motormode == REVERSED) {
+        int temp = DIR1;
+        DIR1 = DIR2;
+        DIR2 = temp;
+      }
+    }
+
+    void setMaxPWM(int maxVel) {
+      MAXVEL = maxVel;
+    }
+
+    void runMotor(int vel) {
+
+      if (vel > MAXVEL) {
+        vel = MAXVEL;
+      }
+      else if (vel < -MAXVEL) {
+        vel = -MAXVEL;
+      }
+
+      if (vel >= 0) {
+        runForward(vel);
+      }
+      else if (vel < 0) {
+        runBackward(-vel);
+      }
+    }
+
+
+  private:
+    mode motorMode = FORWARD;
+    int DIR1, DIR2, PWM, MAXVEL = 255;
+
+    void runForward(int vel) {
+      Serial.print("Running Ahead with speed: ");
+      Serial.println(vel);
+      digitalWrite(DIR1, HIGH);
+      digitalWrite(DIR2, LOW);
+      analogWrite(PWM, vel);
+    }
+
+    void runBackward(int vel) {
+      Serial.print("Running Backward with speed: ");
+      Serial.println(vel);
+      digitalWrite(DIR1, LOW);
+      digitalWrite(DIR2, HIGH);
+      analogWrite(PWM, vel);
+    }
+};
+
+BTS motorBTS(12, A8, A9);
+
+
 //---------------------------------------------------------------------------------------------------------
 //------------------------------------------------- GYRO --------------------------------------------------
 //---------------------------------------------------------------------------------------------------------
+
+class IMUSensor {
+  public:
+    IMUSensor(MPU6050 &sensor, bool AddressFlag) {
+      imu = sensor;
+      if (AddressFlag == 1) {
+        address = 0x69;
+      }
+      else {
+        address = 0x68;
+      }
+      imu.setAddress(address);
+    }
+
+    byte getStatus(){
+      return imuStatus;
+    }
+
+    bool offsetCheck(){
+      return offsetFlag;
+    }
+
+    bool Init() {
+      imuStatus = 0;
+      offsetFlag = 0;
+      Wire.begin();
+      byte status = imu.begin();
+      while (status != 0) {
+        imuStatus = status;
+//        Serial.println("FATALITY      -       Could not connect!!");
+      }
+//      Serial.println(F("Calculating offsets, do not move MPU6050"));
+      // mpu.upsideDownMounting = true; // uncomment this line if the MPU6050 is mounted upside-down
+      imu.calcOffsets();
+//      Serial.println("Done!\n");
+      offsetFlag = 1;
+      return true;
+    }
+  private:
+    MPU6050 &imu;
+    byte imuStatus = 0;
+    bool offsetFlag = 0;
+    int address;
+};
 MPU6050 mpu(Wire);
 bool gyro_setup();
 int16_t gyro_read();
@@ -82,7 +197,7 @@ int upflag = 0, downflag = 0;
 //---------------------------------------------------------------------------------------------------------
 
 //Pin Definitions for LEDs
-#define REDLED 10 
+#define REDLED 10
 #define GREENLED 9
 #define BLUELED 8
 
@@ -155,7 +270,6 @@ void setup() {
   pinMode(DIR2, OUTPUT);
   pinMode(PWM, OUTPUT);
   pinMode(PISTON, OUTPUT);
-  //  attachInterrupt(digitalPinToInterrupt(EN1), encoder, RISING);
 }
 
 void loop() {
@@ -166,10 +280,10 @@ void loop() {
     Serial.println("Connected");
     ps_read();
 
-    if(xj2 > (0.8 * pwm_range)){
+    if (xj2 > (0.8 * pwm_range)) {
       comp++;
     }
-    else if(xj2 < (0.8 * -pwm_range)){
+    else if (xj2 < (0.8 * -pwm_range)) {
       comp--;
     }
     Serial.print("Comp is: ");
@@ -183,13 +297,13 @@ void loop() {
     else if (w < -127) {
       w = -127;
     }
-    drive(-yj1, xj1, w, gyro_read());
+    driveBTS(-yj1, xj1, w, gyro_read());
 
-    
-    if(yj2 > (0.8 * pwm_range)  &&  botMode == ROUND1){
+
+    if (yj2 > (0.8 * pwm_range)  &&  botMode == ROUND1) {
       RackFlag = 1;
     }
-    else if(yj2 < (0.8 * -pwm_range)  &&  botMode == ROUND1){
+    else if (yj2 < (0.8 * -pwm_range)  &&  botMode == ROUND1) {
       RackFlag = 0;
     }
 
@@ -251,27 +365,79 @@ bool roboclaw_setup() {
   roboclaw.begin(115200);
 }
 
-bool drive(int x, int y, int w, int theta) {
-  Serial.print(x);
-  Serial.print("\t");
-  Serial.print(y);
-  Serial.print("\t");
-  Serial.print(w);
-  Serial.print("\t");
-  Serial.print(theta);
-  Serial.print("\t");
-
+bool driveBTS(int x, int y, int w, int theta) {
   float theta_radian = theta * DEG2RAD;
-//  Serial.print(theta);
-//  Serial.println(theta_radian);
+  //  Serial.print(theta);
+  //  Serial.println(theta_radian);
 
   float temp = x * cos(theta_radian) - y * sin(theta_radian);
   y = x * sin(theta_radian) + y * cos(theta_radian);
   x = temp;
+  //
+  //  Serial.print(x);
+  //  Serial.print("\t");
+  //  Serial.println(y);
 
-  Serial.print(x);
-  Serial.print("\t");
-  Serial.println(y);
+  M1Speed = 0.33 * w + 0.58 * y + 0.33 * x;
+  M2Speed = 0.33 * w - 0.58 * y + 0.33 * x;
+  M3Speed = 0.33 * w - 0.67 * x;
+  //  M1Speed = limitVar(M1Speed, 30000);
+  //  M2Speed = limitVar(M2Speed, 30000);
+  //  M3Speed = limitVar(M3Speed, 30000);
+  if (M1Speed > 127) {
+    M1Speed = 127;
+  }
+  else if (M1Speed < -127) {
+    M1Speed = -127;
+  }
+
+  if (M2Speed > 127) {
+    M2Speed = 127;
+  }
+  else if (M3Speed < -127) {
+    M3Speed = -127;
+  }
+
+  if (M1Speed > 127) {
+    M1Speed = 127;
+  }
+  else if (M1Speed < -127) {
+    M1Speed = -127;
+  }
+
+  M1Speed = map(M1Speed, -127, 127, 0, 127);
+  M2Speed = map(M2Speed, -127, 127, 0, 127);
+  M3Speed = map(M3Speed, -127, 127, -255, 255);
+
+
+
+  roboclaw.ForwardBackwardM1(address1, -M1Speed);
+  roboclaw.ForwardBackwardM2(address1, M2Speed);
+  //  roboclaw.ForwardBackwardM2(address2, M3Speed);
+  motorBTS.runMotor(M3Speed);
+  return true;
+}
+bool drive(int x, int y, int w, int theta) {
+  //  Serial.print(x);
+  //  Serial.print("\t");
+  //  Serial.print(y);
+  //  Serial.print("\t");
+  //  Serial.print(w);
+  //  Serial.print("\t");
+  //  Serial.print(theta);
+  //  Serial.print("\t");
+
+  float theta_radian = theta * DEG2RAD;
+  //  Serial.print(theta);
+  //  Serial.println(theta_radian);
+
+  float temp = x * cos(theta_radian) - y * sin(theta_radian);
+  y = x * sin(theta_radian) + y * cos(theta_radian);
+  x = temp;
+  //
+  //  Serial.print(x);
+  //  Serial.print("\t");
+  //  Serial.println(y);
 
   M1Speed = 0.33 * w + 0.58 * y + 0.33 * x;
   M2Speed = 0.33 * w - 0.58 * y + 0.33 * x;
@@ -313,7 +479,7 @@ bool drive(int x, int y, int w, int theta) {
 }
 
 bool drive(int x, int y, int w) {
- M1Speed = 0.33 * w + 0.58 * y + 0.33 * x;
+  M1Speed = 0.33 * w + 0.58 * y + 0.33 * x;
   M2Speed = 0.33 * w - 0.58 * y + 0.33 * x;
   M3Speed = 0.33 * w - 0.67 * x;
   //  M1Speed = limitVar(M1Speed, 30000);
@@ -532,7 +698,7 @@ bool ps_read() {
       interUART_write('5');
       currentPos = 5;
     }
-    else{
+    else {
       digitalWrite(PISTON, !digitalRead(PISTON));
     }
     Serial.println("R1");
@@ -629,26 +795,26 @@ void goToPosition(int Pos) {
   if (Pos == 0) {
     //    Serial.println("Going Down");
     if (!digitalRead(BOTTOM)) {
-//      Serial.print("Value of sensor is: ");
-//      Serial.println(digitalRead(BOTTOM));
-//      Serial.println("Going Down");
+      //      Serial.print("Value of sensor is: ");
+      //      Serial.println(digitalRead(BOTTOM));
+      //      Serial.println("Going Down");
       drive_rack(-255);
     }
     else {
       drive_rack(0);
-//      Serial.println("Stopped at Bottom");
+      //      Serial.println("Stopped at Bottom");
     }
   }
   else if (Pos == 1) {
     //    Serial.println("Going Up");
     if (!digitalRead(TOP)) {
-//      Serial.print("Value of Sensor is: ");
-//      Serial.println(digitalRead(TOP));
-//      Serial.println("Going Up");
+      //      Serial.print("Value of Sensor is: ");
+      //      Serial.println(digitalRead(TOP));
+      //      Serial.println("Going Up");
       drive_rack(255);
     }
     else {
-//      Serial.println("Stopped at Top");
+      //      Serial.println("Stopped at Top");
       drive_rack(0);
     }
   }
@@ -657,13 +823,13 @@ void goToPosition(int Pos) {
 
 void drive_rack(int vel) {
   if (vel > 0) {
-//    Serial.println(count);
+    //    Serial.println(count);
     moveUpRack(vel);
   }
   else if (vel < 0) {
     vel = -vel;
     moveDownRack(vel);
-//    Serial.println(count);
+    //    Serial.println(count);
   }
   else {
     moveUpRack(0);

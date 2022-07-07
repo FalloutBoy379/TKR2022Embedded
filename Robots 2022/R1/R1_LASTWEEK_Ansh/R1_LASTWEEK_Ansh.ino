@@ -55,6 +55,18 @@ class BTS {
       analogWrite(PWM, vel);
     }
 };
+
+//###################################################################################################################################################################
+//##################################################################################### HOPPER ######################################################################
+//###################################################################################################################################################################
+#define CENTERPISTONOUT 34
+#define CENTERPISTONIN 32
+#define LEFTPISTON 28
+#define RIGHTPISTON 30
+#define IN 1
+#define OUT 0
+
+
 class Hopper {
   public:
     void Init() {
@@ -97,6 +109,8 @@ class Hopper {
     bool rState = defaultRight;
 
   private:
+//    const bool IN = 1;
+//    const bool OUT = 0;
     int sideFlag = 1;
     int centerFlag = 1;
     long long int currentTimeSide, currentTimeCenter;
@@ -118,7 +132,7 @@ class Hopper {
       digitalWrite(RIGHTPISTON, state);
     }
 };
-
+Hopper hopper;
 //###################################################################################################################################################################
 //##################################################################################### GYRO ########################################################################
 //###################################################################################################################################################################
@@ -130,6 +144,7 @@ double Kp_Gyro = 6000, Ki_Gyro = 500, Kd_Gyro = 0;
 AutoPID drivePID(&yawGyro, &target, &correction, -25000, 25000, Kp_Gyro, Ki_Gyro, Kd_Gyro);
 bool gyro_setup();
 int16_t gyro_read();
+int comp = 0;
 
 //###################################################################################################################################################################
 //################################################################################# ROBOCLAW ########################################################################
@@ -217,17 +232,6 @@ BTS upperMotor(UPPERPWM, UPPERM1, UPPERM2), lowerMotor(LOWERPWM, LOWERM1, LOWERM
 void throwBall(BTS& motor1, int upperVel, BTS& motor2, int lowerVel);
 
 
-//###################################################################################################################################################################
-//##################################################################################### HOPPER ######################################################################
-//###################################################################################################################################################################
-#define CENTERPISTONOUT 34
-#define CENTERPISTONIN 32
-#define LEFTPISTON 28
-#define RIGHTPISTON 30
-
-#define IN 1
-#define OUT 0
-Hopper hopper;
 
 
 
@@ -248,7 +252,7 @@ void setup() {
   Serial.println("Starting");
   gyro_setup();
   Serial.println("Gyro setup done");
-  
+
   ps_setup();
   Serial.println("Ps setup done");
   roboclaw.begin(115200);
@@ -265,16 +269,17 @@ void loop() {
 
   if (RX_count == 1) {
     yawGyro = gyro_read();
-    
+
     sensorValue = analogRead(analogInPin);
 
     ps_read();
-    if(abs(target - yawGyro) < 10){
+    target = target + comp;
+    if (abs(target - yawGyro) < 10) {
       Ki_Gyro = 32000;
       Kp_Gyro = 6000;
       Kd_Gyro = 0;
     }
-    else{
+    else {
       Kp_Gyro = 12000;
       Ki_Gyro = 500;
       Kd_Gyro = 20000;
@@ -283,23 +288,8 @@ void loop() {
     potPID.run();
     statusPS = 1;
     lights_write(0, 255, 0);
-    //    outputVal = map(xj2, -200, 200, -30000, 30000);
-    //    if (Output < 4000 && Output > -4000) {
-    //      Output = 0;
-    //    }
-    //    int output = output
-    Serial.print(Kp_Gyro);
-    Serial.print("\t");
-    Serial.print(Ki_Gyro);
-    Serial.print("\t");
-    Serial.print(Kd_Gyro);
-    Serial.print("\t");
-    Serial.print("\t");
-    Serial.print("output = ");
-    Serial.print(correction);
-    Serial.print("\t");
-    Serial.print("sensor = ");
-    Serial.println(yawGyro);
+
+
     roboclaw.DutyM1(address1, -outputVal);
     drive(0, 0, correction);
     hopper.exec();
@@ -428,10 +418,12 @@ void ps_read() {
     butt[PS_CROSS] = 0;
   }
   if (butt[PS_L1] == 1) {
+    comp --;
     Serial.println("L1");
     butt[PS_L1] = 0;
   }
   if (butt[PS_R1] == 1) {
+    comp++;
     Serial.println("R1");
     butt[PS_R1] = 0;
   }
@@ -464,11 +456,11 @@ void ps_read() {
 
 void drive(double A_x, double A_y, double ang_s)
 {
-  double F1, F2 ,F3;
+  double F1, F2 , F3;
 
   F1 = (0.5773 * A_x) + (0.333 * A_y) + (0.333 * ang_s);
   F2 = -(0.5773 * A_x) + (0.333 * A_y) + (0.333 * ang_s);
-  F3 = (0*A_x) - (0.666*A_y) + (0.333*ang_s);
+  F3 = (0 * A_x) - (0.666 * A_y) + (0.333 * ang_s);
 
   if (F1 > 25000)
   {
@@ -486,7 +478,7 @@ void drive(double A_x, double A_y, double ang_s)
   {
     F2 = -25000;
   }
-  
+
   if (F3 < -25000)
   {
     F3 = -25000;
