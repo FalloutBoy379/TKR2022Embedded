@@ -246,7 +246,6 @@ bool ps_setup() {
 ISR(USART3_RX_vect)
 {
   RX_count = 1;
-  disconnectedcounter = 0;
   RX_raw = UDR3;
   if ((RX_raw > 200) && (RX_raw < 255))
   {
@@ -271,7 +270,6 @@ ISR(USART3_RX_vect)
 bool ps_read()
 {
   RX_count = 0;
-  disconnectedcounter++;
 
   yj1 = map(RX[0], 0, RX_range, (-pwm_range), pwm_range);
   xj1 = map(RX[1], 0, RX_range, -pwm_range, pwm_range);
@@ -660,6 +658,8 @@ void loop()
 {
 if(RX_count == 1)
   {
+    disconnectedcounter = 0;
+    
     targetangle = zeroangle + target;
     
     ps_read();
@@ -684,7 +684,10 @@ if(RX_count == 1)
   }
   else
   {
-    if (disconnectedcounter >= 100000)
+    
+    disconnectedcounter++;
+    
+    if (disconnectedcounter >= 10000)
     {
       drive(0, 0, 0);
       Raftaar = 0;
