@@ -416,7 +416,7 @@ bool ps_read()
   }
   if (butt[PS_MIC] == 1)
   {
-    targetpot = 840;
+    targetpot = 860;
     Serial.println("Mic");
     butt[PS_MIC] = 0;
   }
@@ -513,29 +513,6 @@ void Throwingflags()
     }
     Raftaar = 0;
   }
-  //  if (ETFLAG == 1)
-  //  {
-  //    targetpot = targetpot + 20;
-  //  }
-  //  if (ETFLAG == 0)
-  //  {
-  //    if (count >= 1000)
-  //    {
-  //      count = 0;
-  //    }
-  //  }
-  //  if (ETFLAG1 == 1)
-  //  {
-  //    targetpot = targetpot - 20;
-  //  }
-  //  if (ETFLAG1 == 0)
-  //  {
-  //    if (count1 >= 1000)
-  //    {
-  //      count1 = 0;
-  //    }
-  //  }
-
 
 }
 
@@ -687,7 +664,7 @@ if(RX_count == 1)
     
     disconnectedcounter++;
     
-    if (disconnectedcounter >= 10000)
+    if (disconnectedcounter >= 100000)
     {
       drive(0, 0, 0);
       Raftaar = 0;
