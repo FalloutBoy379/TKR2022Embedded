@@ -32,12 +32,12 @@ void loop() {
   //  while(temp == 'j');
   if (temp == '0') {
     digitalWrite(13, HIGH);
-    moveUp(10);
+    moveUp(5);
   }
 
   if (temp == '5') {
     digitalWrite(13, LOW);
-    moveDown(10);
+    moveDown(5);
   }
 
 
