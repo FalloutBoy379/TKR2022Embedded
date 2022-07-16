@@ -37,18 +37,19 @@ MPU6050 mpu(Wire);
 #define PS_BUTTON 3
 
 long Raftaar = 0;
+int difference = 0;
 
-double KPA = 157;
+double KPA = 7;
 double KIA = 0;
-double KDA = 0;
+double KDA = 54;
 
-double KPG1 = 20;
-double KIG1 = 5.7;
-double KDG1 = 57;
+double KPG1 = 4;
+double KIG1 = 0;
+double KDG1 = 20;
 
-double KPG = 10;
-double KIG = 0.5;
-double KDG = 42;
+double KPG = 7;
+double KIG = 0;
+double KDG = 20;
 
 double KPP = 3.6;
 double KIP = 0.1;
@@ -231,10 +232,8 @@ uint8_t deficitflag = 0;
 uint8_t flag1 = 0;
 uint8_t flag2 = 0;
 uint8_t Tstate = 0;
-int count = 0;
-int count1 = 0;
-int ETFLAG = 0;
-int ETFLAG1 = 0;
+
+int manual = 0;
 ///////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////
 bool gyro_setup() {
@@ -300,6 +299,17 @@ bool ps_read()
   pot1 = map(RX[4], 0, RX_range, 0, (pwm_range));          //R2
   pot2 = map(RX[5], 0, RX_range, 0, (pwm_range));          //L2
 
+  if(yj2 <= -190)
+  {
+    manual = 1;
+//    Serial.println("Manual 1");
+  }
+  else if(yj2 >= 190)
+  {
+    manual = 0;
+//    Serial.println("Manual 0");
+  }
+
   if (butt[PS_SHARE] == 1)
   {
     Serial.println("Share");
@@ -316,30 +326,30 @@ bool ps_read()
   if (butt[PS_UP] == 1)
   {
     flag2 = 1;
-    target = 65;
-    targetpot = 818;
+    target = 69;
+    targetpot = 800;
     Serial.println("Up");
     butt[PS_UP] = 0;
   }
   if (butt[PS_DOWN] == 1)
   {
     flag2 = 1;
-    target = -65;
-    targetpot = 818;
+    target = -69;
+    targetpot = 800;
     Serial.println("Down");
     butt[PS_DOWN] = 0;
   }
   if (butt[PS_LEFT] == 1)
   {
-    target = 26;
-    targetpot = 818;
+    target = 28;
+    targetpot = 796;
     Serial.println("left");
     butt[PS_LEFT] = 0;
   }
   if (butt[PS_RIGHT] == 1)
   {
-    target = -26;
-    targetpot = 818;
+    target = -28;
+    targetpot = 796;
     Serial.println("right");
     butt[PS_RIGHT] = 0;
   }
@@ -381,49 +391,50 @@ bool ps_read()
   }
   if (butt[PS_L1] == 1)
   {
-    deficitflag = 1;
+//    deficitflag = 1;
+    targetpot = targetpot + 20;
+     
     Serial.println("L1");
     butt[PS_L1] = 0;
   }
   if (butt[PS_R1] == 1)
   {
-    excessflag = 1;
+//    excessflag = 1;
+    targetpot = targetpot - 20;
+    
     Serial.println("R1");
     butt[PS_R1] = 0;
   }
 
+int manualPot = 0;
 
-  if (pot2 >= 180)              //L2
+  if(manual == 1)
   {
-    count = count + 1;
-    if (count == 1 && ETFLAG == 0)
+    if(pot1 > 0)
     {
-      ETFLAG = 1;
-      targetpot = targetpot + 20;
+      manualPot = -pot1;
     }
-    Serial.println("L2");
-  }
-  if (pot2 < 180)
-  {
-    ETFLAG = 0;
-    count = 0;
-  }
-
-
-  if (pot1 >= 180)              //R2
-  {
-    count1 = count1 + 1;
-    if (count1 == 1 && ETFLAG1 == 0)
+    else if(pot2 > 0)
     {
-      ETFLAG1 = 1;
-      targetpot = targetpot - 20;
+      manualPot = pot2;
     }
-    Serial.println("R2");
+    lights_write(255,105,180);
+    drive(xj1,yj1,manualPot);
   }
-  if (pot1 < 180)
+  else if(manual == 0)
   {
-    ETFLAG1 = 0;
-    count1 = 0;
+    if (pot2 >= 190)              //L2
+    {
+      deficitflag = 1;
+      Serial.println("L2");
+    }
+
+    else if (pot1 >= 190)              //R2
+    {
+      excessflag = 1;
+      Serial.println("R2");
+    }
+    drive(xj1, yj1, -sudhaar);
   }
 
   if (butt[PS_L3] == 1)
@@ -482,12 +493,15 @@ long adjust(long variable)
 
 }
 ///////////////////////////////////////////////////////////////////////////////////////////
+int filteredVal = 0;
 ///////////////////////////////////////////////////////////////////////////////////////////
 double gyroread()
 {
   mpu.update();
+  
   int tangz = mpu.getAngleZ();
-  return (tangz);
+  filteredVal = 0.5*tangz + 0.5*filteredVal;
+  return (filteredVal);
 }
 ///////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -523,7 +537,8 @@ void Throwingflags()
 {
   if (Tstate == 7)
   {
-    Raftaar = 32000;
+    Raftaar = 22500;
+    difference = 0;
     Tstate = 1;
   }
   if (Tstate == 0)
@@ -594,7 +609,7 @@ void Hopperflags()
 void Throwing()
 {
   roboclaw.DutyM2(129, -Raftaar);
-  roboclaw.DutyM1(129, -Raftaar);
+  roboclaw.DutyM1(129, -Raftaar + difference);
 }
 ///////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -627,7 +642,7 @@ void PIDsetup()
 ///////////////////////////////////////////////////////////////////////////////////////////
 void powerwindow()
 {
-  PW.runMotor(correction);
+  PW.runMotor(-correction);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -734,12 +749,17 @@ void loop()
     angz =  gyroread();
     DRIVEPID.run();
 
-    drive(xj1, yj1, -sudhaar);
+//    drive(xj1, yj1, -sudhaar);
 
     if (xj2 <= -190){
       resetFunc();
     }
-    Serial.println(xj2);
+//    Serial.print(filteredVal);
+//    
+//    Serial.print("        ");
+//    Serial.println(potvalue);
+    Serial.println(manual);
+    
   }
   else
   {
